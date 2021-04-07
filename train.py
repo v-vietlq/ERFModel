@@ -22,6 +22,7 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device):
     
     top1 = AverageMeter('Acc@1', ':6.2f')
     avgloss = AverageMeter('Loss', '1.5f')
+    jacc1 = AverageMeter('Jacc_sim@1', ':6.2f')
     train_loss = 0.0
     for data in tqdm(data_loader):
         
@@ -41,10 +42,11 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device):
         
         train_loss += loss.cpu().detach().numpy()    
         
-        acc1 = iou(output, target)
+        acc1, jacc = iou(output, target)
         
         top1.update(acc1, image.size(0))
         avgloss.update(loss, image.size(0))
+        jacc1.update(jacc, image.size(0)) 
         # if cnt%10 == 0:
         #     #debug val example checks and prints a random debug example every
         #     #10 batches.
@@ -56,7 +58,7 @@ def train_one_epoch(model, criterion, optimizer, data_loader, device):
         #     print('Training: * Acc@1 {top1.avg:.3f}'
         #                 .format(top1=top1))
             
-    return avgloss.avg, top1.avg
+    return avgloss.avg, top1.avg, jacc1.avg
 
 
 def validate_model(model, criterion, valid_loader, device):
