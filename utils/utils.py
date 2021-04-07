@@ -1,11 +1,14 @@
+from numpy.lib.function_base import average
 import torch
 import numpy as np
 from tqdm import tqdm
 from torch.autograd import Variable
 import cv2
-import torch.functional as F
+import torch.nn.functional as F
 from sklearn.cluster import DBSCAN
 from scipy.spatial import ConvexHull
+
+from sklearn.metrics import jaccard_score as jsc
 
 from shapely.geometry import Polygon, MultiPolygon
 
@@ -41,12 +44,17 @@ def get_score(output, target):
     intersection = np.logical_and(target, output)
     union = np.logical_or(target, output)
     iou_score = np.sum(intersection)/ np.sum(union)
-    return iou_score
+    y_true = target.reshape(-1)
+    y_pred = output.reshape(-1)
+    jacc_sim = jsc(y_true, y_pred, average=None)
+    mean_jacc_sim = np.mean(jacc_sim)
+    return iou_score, mean_jacc_sim
 
 def iou(output, target):
     output, _  = output
-    output = output.max(dim=1)[1]
-    output = output.float().unsqueeze(1)
+    # output = output.max(dim=1)[1]
+    # output = output.float().unsqueeze(1)
+    output = torch.argmax(output, 1)
     output = output.cpu().numpy()
     return get_score(output, target.cpu().numpy())
 
@@ -56,7 +64,7 @@ def debug_val_example(model, data_loader):
     for data in tqdm(data_loader):
       image = data['image']
       target = data['label'].squeeze(1)
-      target = torch.round(target*255) #converting to range 0-255
+      # target = torch.round(target*255) #converting to range 0-255
       target = target.type(torch.int64).cpu()
       model.to(torch.device('cpu'))
       input_tensor = Variable(image).cpu()
@@ -83,7 +91,7 @@ def get_clustered_output(output, multithreading):
   output, _ = output
 
   ### Classification
-  resize_factor = 3
+  resize_factor = 4
   output = output.max(dim=1)[1]
   output = output.float().unsqueeze(1)
 
