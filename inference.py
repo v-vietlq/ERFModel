@@ -11,11 +11,12 @@ def preprocess(img, height = 1024, width = 512):
     return img
 
 def segmentation(img,origin_height, origin_width, model, device):
-    img = T.ToTensor()(img).to(device)
+    img = T.ToTensor()(img).unsqueeze(dim=0).to(device) 
     
     with torch.no_grad():
-        output = model(img)
-    
+        output, _ = model(img)
+        
+
     output = torch.nn.Upsample(size=((origin_height, origin_width)),
                                mode='bilinear',
                                align_corners=True
